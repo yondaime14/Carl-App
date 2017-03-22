@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">RecyclerView</string>
+    <string name="already_registered_login_now">Already Registered ? Login Now !</string>
+    <string name="not_registered_register_now">Not Registered ? Register Now !</string>
+    <string name="forgot_password">Forgot Password ?</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="logoutBtn">Logout</string>
+</resources>
