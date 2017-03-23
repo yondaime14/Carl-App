@@ -1,104 +1,217 @@
 package com.carllewis14.recyclerview.fragments;
 
-import android.content.Context;
-import android.net.Uri;
 import android.os.Bundle;
+import android.support.design.widget.Snackbar;
+import android.support.design.widget.TextInputLayout;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import com.carllewis14.recyclerview.R;
+import com.carllewis14.recyclerview.datamodel.Response;
+import com.carllewis14.recyclerview.datamodel.User;
+import com.carllewis14.recyclerview.network.NetworkUtil;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import java.io.IOException;
+
+import retrofit2.adapter.rxjava.HttpException;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
+import rx.subscriptions.CompositeSubscription;
+
+import static com.carllewis14.recyclerview.utils.Validation.validateEmail;
+import static com.carllewis14.recyclerview.utils.Validation.validateFields;
 
 /**
- *
+ * Handles the Register Activity of user
  */
 public class RegisterFragment extends Fragment {
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
 
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    public static final String TAG = RegisterFragment.class.getSimpleName();
 
-    private OnFragmentInteractionListener mListener;
+    private EditText mEtName;
+    private EditText mEtEmail;
+    private EditText mEtPassword;
+    private Button mBtRegister;
+    private TextView mTVLogin;
+    private TextInputLayout mTiName;
+    private TextInputLayout mTiEmail;
+    private TextInputLayout mTiPassword;
+    private ProgressBar mProgressbar;
+
+    private CompositeSubscription compositeSubscription;
+
 
     public RegisterFragment() {
         // Required empty public constructor
     }
 
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment RegisterFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static RegisterFragment newInstance(String param1, String param2) {
-        RegisterFragment fragment = new RegisterFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
+
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_register, container, false);
+        View view = inflater.inflate(R.layout.fragment_register, container, false);
+        compositeSubscription = new CompositeSubscription();
+        initViews(view);
+        return view;
     }
 
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.onFragmentInteraction(uri);
-        }
-    }
+    private void initViews(View v) {
 
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        if (context instanceof OnFragmentInteractionListener) {
-            mListener = (OnFragmentInteractionListener) context;
-        } else {
-            throw new RuntimeException(context.toString()
-                    + " must implement OnFragmentInteractionListener");
-        }
-    }
+        mEtEmail = (EditText) v.findViewById(R.id.et_email);
+        mEtName = (EditText) v.findViewById(R.id.et_name);
+        mEtPassword = (EditText) v.findViewById(R.id.et_password);
+        mBtRegister = (Button) v.findViewById(R.id.btn_register);
+        mTVLogin = (TextView) v.findViewById(R.id.tv_login);
+        mTiEmail = (TextInputLayout) v.findViewById(R.id.ti_email);
+        mTiName = (TextInputLayout) v.findViewById(R.id.ti_name);
+        mTiPassword = (TextInputLayout) v.findViewById(R.id.ti_password);
+        mProgressbar = (ProgressBar) v.findViewById(R.id.progress);
 
-    @Override
-    public void onDetach() {
-        super.onDetach();
-        mListener = null;
+        mBtRegister.setOnClickListener(view -> register());
+        mTVLogin.setOnClickListener(view -> goToLogin());
     }
 
     /**
-     * This interface must be implemented by activities that contain this
-     * fragment to allow an interaction in this fragment to be communicated
-     * to the activity and potentially other fragments contained in that
-     * activity.
-     * <p>
-     * See the Android Training lesson <a href=
-     * "http://developer.android.com/training/basics/fragments/communicating.html"
-     * >Communicating with Other Fragments</a> for more information.
+     * Register Actions
+     *
      */
-    public interface OnFragmentInteractionListener {
-        // TODO: Update argument type and name
-        void onFragmentInteraction(Uri uri);
+
+    private void register() {
+
+        setError();
+
+        //assign the fields to named variables
+
+        String name = mEtName.getText().toString();
+        String email = mEtEmail.getText().toString();
+        String password = mEtPassword.getText().toString();
+
+        /**
+         * If fields are empty error messages
+         */
+
+        int invalid = 0;
+
+        if (!validateFields(name)) {
+
+            invalid++;
+            mTiName.setError("Name should not be empty!");
+        }
+
+        if (!validateEmail(email)) {
+
+            invalid++;
+            mTiEmail.setError("Email should be valid!");
+        }
+
+        if (validateFields(password)) {
+
+            invalid++;
+            mTiPassword.setError("Password shold not be empty!");
+        }
+
+        /**
+         * if fields are fine
+         */
+        if (invalid == 0) {
+            User user = new User();
+            user.setName(name);
+            user.setEmail(email);
+            user.setPassword(password);
+
+            mProgressbar.setVisibility(View.VISIBLE);
+            registerProcess(user);
+        } else {
+            showSnackBarMessage("Enter Valid Details");
+        }
+
+
+    }
+
+    /**
+     * if Fields are empty validation fail
+     */
+    private void setError(){
+
+        mTiName.setError(null);
+        mTiEmail.setError(null);
+        mTiPassword.setError(null);
+
+    }
+
+    private void showSnackBarMessage(String message) {
+
+        if (getView() != null) {
+            Snackbar.make(getView(), message,Snackbar.LENGTH_LONG).show();
+        }
+    }
+
+    private void registerProcess(User user) {
+
+        compositeSubscription.add(NetworkUtil.getRetrofit().register(user)
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribeOn(Schedulers.io())
+        .subscribe(this::handleResponse,this::handleError));
+    }
+
+    private void handleResponse(Response response) {
+
+        mProgressbar.setVisibility(View.GONE);
+        showSnackBarMessage(response.getMessage());
+    }
+
+    private void handleError(Throwable error) {
+
+        mProgressbar.setVisibility(View.GONE);
+
+        if (error instanceof HttpException) {
+            Gson gson = new GsonBuilder().create();
+
+            try {
+                String errorBody = ((HttpException) error).response().errorBody().string();
+                Response response = gson.fromJson(errorBody, Response.class);
+                showSnackBarMessage(response.getMessage());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+
+            showSnackBarMessage("Network Error !");
+        }
+
+    }
+
+    private void goToLogin() {
+
+        FragmentTransaction ft = getFragmentManager().beginTransaction();
+        LoginFragment fragment = new LoginFragment();
+        ft.replace(R.id.fragmentFrame, fragment, LoginFragment.TAG);
+        ft.commit();
+
+    }
+
+    /**
+     * this unsubscribes the subscription to prevent memory leak
+     */
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        compositeSubscription.unsubscribe();
     }
 }
