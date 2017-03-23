@@ -14,7 +14,7 @@ public class Validation {
     }
 
 
-    public static boolean valididateEmail(String string) {
+    public static boolean validateEmail(String string) {
 
         return !(TextUtils.isEmpty(string) || !Patterns.EMAIL_ADDRESS.matcher(string).matches());
     }
