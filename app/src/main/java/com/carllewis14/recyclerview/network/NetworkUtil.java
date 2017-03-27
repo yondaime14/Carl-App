@@ -62,7 +62,7 @@ public class NetworkUtil {
 
     }
 
-    public RetrofitInterface getRetrofit(String token) {
+    public static RetrofitInterface getRetrofit(String token) {
 
         OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
 
