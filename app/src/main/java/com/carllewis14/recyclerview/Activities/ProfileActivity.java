@@ -3,17 +3,25 @@ package com.carllewis14.recyclerview.Activities;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.carllewis14.recyclerview.R;
+import com.carllewis14.recyclerview.datamodel.Response;
 import com.carllewis14.recyclerview.datamodel.User;
 import com.carllewis14.recyclerview.fragments.ChangePasswordDialog;
 import com.carllewis14.recyclerview.network.NetworkUtil;
 import com.carllewis14.recyclerview.utils.Constants;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
+import java.io.IOException;
+
+import retrofit2.adapter.rxjava.HttpException;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.CompositeSubscription;
@@ -75,6 +83,38 @@ public class ProfileActivity extends AppCompatActivity implements ChangePassword
     }
 
 
+
+
+    /*
+    Logout of App
+     */
+
+    private void logout(){
+
+        SharedPreferences.Editor editor = mSharedpref.edit();
+        editor.putString(Constants.EMAIL,"");
+        editor.putString(Constants.TOKEN, "");
+        editor.apply();
+        finish();
+
+
+    }
+
+
+    private void showDialog(){
+
+        ChangePasswordDialog fragment = new ChangePasswordDialog();
+
+        Bundle bundle = new Bundle();
+        bundle.putString(Constants.EMAIL, mEmail);
+        bundle.putString(Constants.TOKEN, mToken);
+        fragment.setArguments(bundle);
+
+        fragment.show(getSupportFragmentManager(), ChangePasswordDialog.TAG);
+
+
+    }
+
     private void loadProfile(){
 
         compositeSubscription.add(NetworkUtil.getRetrofit(mToken).getProfile(mEmail)
@@ -83,37 +123,58 @@ public class ProfileActivity extends AppCompatActivity implements ChangePassword
                 .subscribe(this::handleResponse,this::handleError));
     }
 
-    private void logout(){
-
-        SharedPreferences.Editor editor = mSharedpref.edit();
-        editor.putString(Constants.EMAIL,"");
-        editor.putString(Constants.TOKEN, "");
-
-
-    }
 
     private void handleResponse(User user) {
 
-
+        mProgressbar.setVisibility(View.GONE);
+        mTvName.setText(user.getName());
+        mTvEmail.setText(user.getEmail());
+        mTvDate.setText(user.getCreated_at());
 
     }
 
     private void handleError(Throwable error) {
 
+        mProgressbar.setVisibility(View.GONE);
+        if (error instanceof HttpException) {
+
+            Gson gson = new GsonBuilder().create();
+
+            try {
+                String errorBody = ((HttpException) error).response().errorBody().string();
+                Response response = gson.fromJson(errorBody, Response.class);
+                showSnackBarMessage(response.getMessage());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            showSnackBarMessage("Network Error !");
+        }
+
     }
 
+    private void showSnackBarMessage(String message) {
+
+        Snackbar.make(findViewById(R.id.activity_profile),message,Snackbar.LENGTH_LONG).show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        compositeSubscription.unsubscribe();
+    }
 
     @Override
     public void onPasswordChanged() {
 
-    }
-
-
-
-
-    private void showDialog(){
+        showSnackBarMessage("Your password has been successfully changed! ");
 
     }
+
+
+
+
+
 
 
 }
